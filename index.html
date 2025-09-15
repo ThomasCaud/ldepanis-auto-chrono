@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrono d'Entraînement Auto</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1rem;
+            backdrop-filter: blur(5px);
+        }
+
+        input[type="number"]::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .timer-section {
+            display: none;
+            text-align: center;
+        }
+
+        .timer-display {
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 2rem 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .phase-indicator {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .phase-effort {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            animation: pulse 1s infinite;
+        }
+
+        .phase-repos {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        }
+
+        .phase-countdown {
+            background: linear-gradient(45deg, #ffa726, #ff9800);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .cycle-info {
+            margin-top: 1rem;
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ecdc4, #44a08d);
+            border-radius: 5px;
+            transition: width 1s ease;
+        }
+
+        .btn-stop {
+            background: linear-gradient(45deg, #ff4757, #c44569);
+            margin-top: 1rem;
+        }
+
+        .btn-stop:hover {
+            background: linear-gradient(45deg, #ff3742, #b83e5f);
+        }
+
+        .settings-summary {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏃‍♂️ Chrono d'Entraînement</h1>
+        
+        <!-- Configuration Form -->
+        <div id="configSection">
+            <div class="form-group">
+                <label for="totalTime">Temps total (en minutes) :</label>
+                <input type="number" id="totalTime" min="1" max="180" value="20" placeholder="Ex: 20">
+            </div>
+            
+            <div class="form-group">
+                <label for="trainingLoad">Charge d'entraînement (ratio 0.1 à 1.0) :</label>
+                <input type="number" id="trainingLoad" min="0.1" max="1.0" step="0.1" value="0.7" placeholder="Ex: 0.7">
+            </div>
+            
+            <div class="form-group">
+                <label for="effortInterval">Intervalle d'effort (en secondes) :</label>
+                <input type="number" id="effortInterval" min="5" max="300" value="30" placeholder="Ex: 30">
+            </div>
+            
+            <div class="form-group">
+                <label for="restInterval">Intervalle de repos (en secondes) :</label>
+                <input type="number" id="restInterval" min="5" max="600" value="60" placeholder="Ex: 60">
+            </div>
+            
+            <button class="btn btn-primary" onclick="startWorkout()">🚀 C'est parti !</button>
+        </div>
+
+        <!-- Timer Section -->
+        <div id="timerSection" class="timer-section">
+            <div class="settings-summary" id="settingsSummary"></div>
+            
+            <div class="phase-indicator" id="phaseIndicator">Préparation...</div>
+            
+            <div class="timer-display" id="timerDisplay">00:00</div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+            
+            <div class="cycle-info" id="cycleInfo">Cycle 1</div>
+            
+            <button class="btn btn-stop" onclick="stopWorkout()">⏹️ Arrêter</button>
+            <button class="btn btn-primary" onclick="resetWorkout()" style="margin-top: 0.5rem;">🔄 Nouveau</button>
+        </div>
+    </div>
+
+    <script>
+        let workoutState = {
+            totalTimeMs: 0,
+            trainingLoad: 0,
+            effortIntervalMs: 0,
+            restIntervalMs: 0,
+            currentPhase: 'countdown', // countdown, effort, rest, finished
+            currentCycle: 1,
+            timeRemaining: 0,
+            phaseTimeRemaining: 0,
+            intervalId: null,
+            startTime: null,
+            isRunning: false
+        };
+
+        function startWorkout() {
+            // Get and validate inputs
+            const totalTime = parseInt(document.getElementById('totalTime').value);
+            const trainingLoad = parseFloat(document.getElementById('trainingLoad').value);
+            const effortInterval = parseInt(document.getElementById('effortInterval').value);
+            const restInterval = parseInt(document.getElementById('restInterval').value);
+
+            if (!totalTime || !trainingLoad || !effortInterval || !restInterval) {
+                alert('Veuillez remplir tous les champs !');
+                return;
+            }
+
+            if (trainingLoad < 0.1 || trainingLoad > 1.0) {
+                alert('La charge d\'entraînement doit être entre 0.1 et 1.0 !');
+                return;
+            }
+
+            // Initialize workout state
+            workoutState = {
+                totalTimeMs: totalTime * 60 * 1000,
+                trainingLoad: trainingLoad,
+                effortIntervalMs: effortInterval * 1000,
+                restIntervalMs: restInterval * 1000,
+                currentPhase: 'countdown',
+                currentCycle: 1,
+                timeRemaining: totalTime * 60 * 1000,
+                phaseTimeRemaining: 3000, // 3 second countdown
+                intervalId: null,
+                startTime: null,
+                isRunning: false
+            };
+
+            // Show timer section and hide config
+            document.getElementById('configSection').style.display = 'none';
+            document.getElementById('timerSection').style.display = 'block';
+
+            // Display settings summary
+            updateSettingsSummary();
+
+            // Start countdown
+            startCountdown();
+        }
+
+        function updateSettingsSummary() {
+            const summary = document.getElementById('settingsSummary');
+            summary.innerHTML = `
+                📊 <strong>Paramètres:</strong> ${Math.round(workoutState.totalTimeMs / 60000)}min total, 
+                Charge: ${workoutState.trainingLoad}, 
+                Effort: ${workoutState.effortIntervalMs / 1000}s, 
+                Repos: ${workoutState.restIntervalMs / 1000}s
+            `;
+        }
+
+        function startCountdown() {
+            workoutState.currentPhase = 'countdown';
+            workoutState.phaseTimeRemaining = 3000;
+            
+            updateDisplay();
+            
+            workoutState.intervalId = setInterval(() => {
+                workoutState.phaseTimeRemaining -= 100;
+                
+                if (workoutState.phaseTimeRemaining <= 0) {
+                    clearInterval(workoutState.intervalId);
+                    startMainWorkout();
+                } else {
+                    updateDisplay();
+                }
+            }, 100);
+        }
+
+        function startMainWorkout() {
+            workoutState.startTime = Date.now();
+            workoutState.isRunning = true;
+            nextPhase();
+        }
+
+        function nextPhase() {
+            if (workoutState.timeRemaining <= 0) {
+                finishWorkout();
+                return;
+            }
+
+            // Determine next phase
+            if (workoutState.currentPhase === 'countdown' || workoutState.currentPhase === 'rest') {
+                workoutState.currentPhase = 'effort';
+                workoutState.phaseTimeRemaining = getRandomEffortTime();
+            } else {
+                workoutState.currentPhase = 'rest';
+                workoutState.phaseTimeRemaining = getRandomRestTime();
+                workoutState.currentCycle++;
+            }
+
+            // Make sure we don't exceed total time
+            if (workoutState.phaseTimeRemaining > workoutState.timeRemaining) {
+                workoutState.phaseTimeRemaining = workoutState.timeRemaining;
+            }
+
+            updateDisplay();
+            
+            workoutState.intervalId = setInterval(() => {
+                workoutState.timeRemaining -= 100;
+                workoutState.phaseTimeRemaining -= 100;
+                
+                if (workoutState.phaseTimeRemaining <= 0 || workoutState.timeRemaining <= 0) {
+                    clearInterval(workoutState.intervalId);
+                    if (workoutState.timeRemaining <= 0) {
+                        finishWorkout();
+                    } else {
+                        nextPhase();
+                    }
+                } else {
+                    updateDisplay();
+                }
+            }, 100);
+        }
+
+        function getRandomEffortTime() {
+            const baseTime = workoutState.effortIntervalMs;
+            const variation = baseTime * 0.3; // ±30% variation
+            const min = Math.max(5000, baseTime - variation); // minimum 5 seconds
+            const max = baseTime + variation;
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function getRandomRestTime() {
+            const baseTime = workoutState.restIntervalMs;
+            const variation = baseTime * 0.3; // ±30% variation
+            const loadFactor = 1.5 - workoutState.trainingLoad; // Higher load = shorter rest
+            const min = Math.max(5000, (baseTime - variation) * loadFactor);
+            const max = (baseTime + variation) * loadFactor;
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function updateDisplay() {
+            const phaseIndicator = document.getElementById('phaseIndicator');
+            const timerDisplay = document.getElementById('timerDisplay');
+            const progressFill = document.getElementById('progressFill');
+            const cycleInfo = document.getElementById('cycleInfo');
+
+            // Update phase indicator
+            switch (workoutState.currentPhase) {
+                case 'countdown':
+                    phaseIndicator.textContent = '🟡 Préparation...';
+                    phaseIndicator.className = 'phase-indicator phase-countdown';
+                    break;
+                case 'effort':
+                    phaseIndicator.textContent = '🔥 EFFORT !';
+                    phaseIndicator.className = 'phase-indicator phase-effort';
+                    break;
+                case 'rest':
+                    phaseIndicator.textContent = '💚 Repos';
+                    phaseIndicator.className = 'phase-indicator phase-repos';
+                    break;
+                case 'finished':
+                    phaseIndicator.textContent = '🎉 Terminé !';
+                    phaseIndicator.className = 'phase-indicator phase-repos';
+                    break;
+            }
+
+            // Update timer display
+            if (workoutState.currentPhase === 'countdown') {
+                const seconds = Math.ceil(workoutState.phaseTimeRemaining / 1000);
+                timerDisplay.textContent = seconds.toString();
+            } else {
+                const minutes = Math.floor(workoutState.phaseTimeRemaining / 60000);
+                const seconds = Math.floor((workoutState.phaseTimeRemaining % 60000) / 1000);
+                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            // Update progress bar
+            const totalTime = workoutState.totalTimeMs;
+            const elapsed = totalTime - workoutState.timeRemaining;
+            const progress = Math.min(100, (elapsed / totalTime) * 100);
+            progressFill.style.width = `${progress}%`;
+
+            // Update cycle info
+            if (workoutState.currentPhase !== 'countdown') {
+                const totalMinutes = Math.floor(workoutState.timeRemaining / 60000);
+                const totalSeconds = Math.floor((workoutState.timeRemaining % 60000) / 1000);
+                cycleInfo.textContent = `Cycle ${workoutState.currentCycle} | Temps restant: ${totalMinutes}:${totalSeconds.toString().padStart(2, '0')}`;
+            } else {
+                cycleInfo.textContent = 'Préparation du premier cycle...';
+            }
+        }
+
+        function finishWorkout() {
+            clearInterval(workoutState.intervalId);
+            workoutState.currentPhase = 'finished';
+            workoutState.isRunning = false;
+            workoutState.timeRemaining = 0;
+            workoutState.phaseTimeRemaining = 0;
+            updateDisplay();
+            
+            // Play a completion sound if possible
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 1);
+            } catch (e) {
+                // Audio not supported, that's okay
+            }
+        }
+
+        function stopWorkout() {
+            clearInterval(workoutState.intervalId);
+            workoutState.isRunning = false;
+            resetWorkout();
+        }
+
+        function resetWorkout() {
+            clearInterval(workoutState.intervalId);
+            document.getElementById('timerSection').style.display = 'none';
+            document.getElementById('configSection').style.display = 'block';
+            
+            // Reset state
+            workoutState = {
+                totalTimeMs: 0,
+                trainingLoad: 0,
+                effortIntervalMs: 0,
+                restIntervalMs: 0,
+                currentPhase: 'countdown',
+                currentCycle: 1,
+                timeRemaining: 0,
+                phaseTimeRemaining: 0,
+                intervalId: null,
+                startTime: null,
+                isRunning: false
+            };
+        }
+
+        // Prevent accidental page reload during workout
+        window.addEventListener('beforeunload', function (e) {
+            if (workoutState.isRunning) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // Handle visibility change (when user switches tabs)
+        document.addEventListener('visibilitychange', function() {
+            if (workoutState.isRunning && document.hidden) {
+                // User switched away, could pause or show notification
+                console.log('Workout continues in background...');
+            }
+        });
+    </script>
+</body>
+</html>
