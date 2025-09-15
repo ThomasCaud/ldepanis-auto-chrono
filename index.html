@@ -198,13 +198,23 @@
             </div>
             
             <div class="form-group">
-                <label for="effortInterval">Intervalle d'effort (en secondes) :</label>
-                <input type="number" id="effortInterval" min="5" max="300" value="30" placeholder="Ex: 30">
+                <label for="effortIntervalMin">Effort - Temps minimum (en secondes) :</label>
+                <input type="number" id="effortIntervalMin" min="5" max="300" value="20" placeholder="Ex: 20">
             </div>
             
             <div class="form-group">
-                <label for="restInterval">Intervalle de repos (en secondes) :</label>
-                <input type="number" id="restInterval" min="5" max="600" value="60" placeholder="Ex: 60">
+                <label for="effortIntervalMax">Effort - Temps maximum (en secondes) :</label>
+                <input type="number" id="effortIntervalMax" min="5" max="300" value="40" placeholder="Ex: 40">
+            </div>
+            
+            <div class="form-group">
+                <label for="restIntervalMin">Repos - Temps minimum (en secondes) :</label>
+                <input type="number" id="restIntervalMin" min="5" max="600" value="30" placeholder="Ex: 30">
+            </div>
+            
+            <div class="form-group">
+                <label for="restIntervalMax">Repos - Temps maximum (en secondes) :</label>
+                <input type="number" id="restIntervalMax" min="5" max="600" value="90" placeholder="Ex: 90">
             </div>
             
             <button class="btn btn-primary" onclick="startWorkout()">🚀 C'est parti !</button>
@@ -233,8 +243,10 @@
         let workoutState = {
             totalTimeMs: 0,
             trainingLoad: 0,
-            effortIntervalMs: 0,
-            restIntervalMs: 0,
+            effortIntervalMinMs: 0,
+            effortIntervalMaxMs: 0,
+            restIntervalMinMs: 0,
+            restIntervalMaxMs: 0,
             currentPhase: 'countdown', // countdown, effort, rest, finished
             currentCycle: 1,
             timeRemaining: 0,
@@ -248,10 +260,12 @@
             // Get and validate inputs
             const totalTime = parseInt(document.getElementById('totalTime').value);
             const trainingLoad = parseFloat(document.getElementById('trainingLoad').value);
-            const effortInterval = parseInt(document.getElementById('effortInterval').value);
-            const restInterval = parseInt(document.getElementById('restInterval').value);
+            const effortIntervalMin = parseInt(document.getElementById('effortIntervalMin').value);
+            const effortIntervalMax = parseInt(document.getElementById('effortIntervalMax').value);
+            const restIntervalMin = parseInt(document.getElementById('restIntervalMin').value);
+            const restIntervalMax = parseInt(document.getElementById('restIntervalMax').value);
 
-            if (!totalTime || !trainingLoad || !effortInterval || !restInterval) {
+            if (!totalTime || !trainingLoad || !effortIntervalMin || !effortIntervalMax || !restIntervalMin || !restIntervalMax) {
                 alert('Veuillez remplir tous les champs !');
                 return;
             }
@@ -261,12 +275,24 @@
                 return;
             }
 
+            if (effortIntervalMin > effortIntervalMax) {
+                alert('Le temps minimum d\'effort doit être inférieur ou égal au temps maximum !');
+                return;
+            }
+
+            if (restIntervalMin > restIntervalMax) {
+                alert('Le temps minimum de repos doit être inférieur ou égal au temps maximum !');
+                return;
+            }
+
             // Initialize workout state
             workoutState = {
                 totalTimeMs: totalTime * 60 * 1000,
                 trainingLoad: trainingLoad,
-                effortIntervalMs: effortInterval * 1000,
-                restIntervalMs: restInterval * 1000,
+                effortIntervalMinMs: effortIntervalMin * 1000,
+                effortIntervalMaxMs: effortIntervalMax * 1000,
+                restIntervalMinMs: restIntervalMin * 1000,
+                restIntervalMaxMs: restIntervalMax * 1000,
                 currentPhase: 'countdown',
                 currentCycle: 1,
                 timeRemaining: totalTime * 60 * 1000,
@@ -292,8 +318,8 @@
             summary.innerHTML = `
                 📊 <strong>Paramètres:</strong> ${Math.round(workoutState.totalTimeMs / 60000)}min total, 
                 Charge: ${workoutState.trainingLoad}, 
-                Effort: ${workoutState.effortIntervalMs / 1000}s, 
-                Repos: ${workoutState.restIntervalMs / 1000}s
+                Effort: ${workoutState.effortIntervalMinMs / 1000}s-${workoutState.effortIntervalMaxMs / 1000}s, 
+                Repos: ${workoutState.restIntervalMinMs / 1000}s-${workoutState.restIntervalMaxMs / 1000}s
             `;
         }
 
@@ -362,11 +388,15 @@
         }
 
         function getRandomEffortTime() {
-            return workoutState.effortIntervalMs;
+            const min = workoutState.effortIntervalMinMs;
+            const max = workoutState.effortIntervalMaxMs;
+            return Math.floor(Math.random() * (max - min + 1000)) + min;
         }
 
         function getRandomRestTime() {
-            const baseTime = workoutState.restIntervalMs;
+            const min = workoutState.restIntervalMinMs;
+            const max = workoutState.restIntervalMaxMs;
+            const baseTime = Math.floor(Math.random() * (max - min + 1000)) + min;
             const loadFactor = 1.5 - workoutState.trainingLoad; // Higher load = shorter rest
             return Math.floor(baseTime * loadFactor);
         }
@@ -468,8 +498,10 @@
             workoutState = {
                 totalTimeMs: 0,
                 trainingLoad: 0,
-                effortIntervalMs: 0,
-                restIntervalMs: 0,
+                effortIntervalMinMs: 0,
+                effortIntervalMaxMs: 0,
+                restIntervalMinMs: 0,
+                restIntervalMaxMs: 0,
                 currentPhase: 'countdown',
                 currentCycle: 1,
                 timeRemaining: 0,
