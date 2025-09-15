@@ -253,7 +253,10 @@
             phaseTimeRemaining: 0,
             intervalId: null,
             startTime: null,
-            isRunning: false
+            isRunning: false,
+            totalEffortTime: 0,
+            totalRestTime: 0,
+            targetEffortRestRatio: 1
         };
 
         function startWorkout() {
@@ -299,7 +302,10 @@
                 phaseTimeRemaining: 3000, // 3 second countdown
                 intervalId: null,
                 startTime: null,
-                isRunning: false
+                isRunning: false,
+                totalEffortTime: 0,
+                totalRestTime: 0,
+                targetEffortRestRatio: trainingLoad // Training load is the target ratio of effort to rest
             };
 
             // Show timer section and hide config
@@ -370,12 +376,23 @@
 
             updateDisplay();
             
+            const phaseStartTime = workoutState.phaseTimeRemaining;
+            
             workoutState.intervalId = setInterval(() => {
                 workoutState.timeRemaining -= 100;
                 workoutState.phaseTimeRemaining -= 100;
                 
                 if (workoutState.phaseTimeRemaining <= 0 || workoutState.timeRemaining <= 0) {
                     clearInterval(workoutState.intervalId);
+                    
+                    // Track completed phase time
+                    const completedPhaseTime = phaseStartTime - Math.max(0, workoutState.phaseTimeRemaining);
+                    if (workoutState.currentPhase === 'effort') {
+                        workoutState.totalEffortTime += completedPhaseTime;
+                    } else if (workoutState.currentPhase === 'rest') {
+                        workoutState.totalRestTime += completedPhaseTime;
+                    }
+                    
                     if (workoutState.timeRemaining <= 0) {
                         finishWorkout();
                     } else {
@@ -396,9 +413,30 @@
         function getRandomRestTime() {
             const min = workoutState.restIntervalMinMs;
             const max = workoutState.restIntervalMaxMs;
-            const baseTime = Math.floor(Math.random() * (max - min + 1000)) + min;
-            const loadFactor = 1.5 - workoutState.trainingLoad; // Higher load = shorter rest
-            return Math.floor(baseTime * loadFactor);
+            let baseTime = Math.floor(Math.random() * (max - min + 1000)) + min;
+            
+            // Calculate current effort to rest ratio
+            const currentTotalTime = workoutState.totalEffortTime + workoutState.totalRestTime;
+            if (currentTotalTime > 0) {
+                const currentRatio = workoutState.totalEffortTime / workoutState.totalRestTime;
+                const targetRatio = workoutState.targetEffortRestRatio;
+                
+                // If we're behind the target ratio (not enough effort relative to rest), 
+                // reduce rest time to catch up
+                if (currentRatio < targetRatio) {
+                    const adjustmentFactor = Math.max(0.3, targetRatio / (targetRatio + (targetRatio - currentRatio)));
+                    baseTime = Math.floor(baseTime * adjustmentFactor);
+                }
+                // If we're ahead of the target ratio (too much effort relative to rest),
+                // increase rest time to balance
+                else if (currentRatio > targetRatio) {
+                    const adjustmentFactor = Math.min(2.0, 1 + (currentRatio - targetRatio) / targetRatio);
+                    baseTime = Math.floor(baseTime * adjustmentFactor);
+                }
+            }
+            
+            // Ensure we stay within bounds
+            return Math.max(min, Math.min(max, baseTime));
         }
 
         function updateDisplay() {
@@ -508,7 +546,10 @@
                 phaseTimeRemaining: 0,
                 intervalId: null,
                 startTime: null,
-                isRunning: false
+                isRunning: false,
+                totalEffortTime: 0,
+                totalRestTime: 0,
+                targetEffortRestRatio: 1
             };
         }
 
