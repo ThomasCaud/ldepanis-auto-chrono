@@ -362,20 +362,13 @@
         }
 
         function getRandomEffortTime() {
-            const baseTime = workoutState.effortIntervalMs;
-            const variation = baseTime * 0.3; // ±30% variation
-            const min = Math.max(5000, baseTime - variation); // minimum 5 seconds
-            const max = baseTime + variation;
-            return Math.floor(Math.random() * (max - min + 1)) + min;
+            return workoutState.effortIntervalMs;
         }
 
         function getRandomRestTime() {
             const baseTime = workoutState.restIntervalMs;
-            const variation = baseTime * 0.3; // ±30% variation
             const loadFactor = 1.5 - workoutState.trainingLoad; // Higher load = shorter rest
-            const min = Math.max(5000, (baseTime - variation) * loadFactor);
-            const max = (baseTime + variation) * loadFactor;
-            return Math.floor(Math.random() * (max - min + 1)) + min;
+            return Math.floor(baseTime * loadFactor);
         }
 
         function updateDisplay() {
