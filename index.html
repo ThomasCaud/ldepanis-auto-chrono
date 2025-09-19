@@ -208,13 +208,8 @@
             </div>
             
             <div class="form-group">
-                <label for="restIntervalMin">Repos - Temps minimum (en secondes) :</label>
-                <input type="number" id="restIntervalMin" min="5" max="600" value="30" placeholder="Ex: 30">
-            </div>
-            
-            <div class="form-group">
-                <label for="restIntervalMax">Repos - Temps maximum (en secondes) :</label>
-                <input type="number" id="restIntervalMax" min="5" max="600" value="90" placeholder="Ex: 90">
+                <label for="variation">Variation du repos (%) :</label>
+                <input type="number" id="variation" min="0" max="100" step="1" value="0" placeholder="Ex: 20">
             </div>
             
             <button class="btn btn-primary" onclick="startWorkout()">🚀 C'est parti !</button>
@@ -245,8 +240,7 @@
             trainingLoad: 0,
             effortIntervalMinMs: 0,
             effortIntervalMaxMs: 0,
-            restIntervalMinMs: 0,
-            restIntervalMaxMs: 0,
+            variation: 0,
             currentPhase: 'countdown', // countdown, effort, rest, finished
             currentCycle: 1,
             timeRemaining: 0,
@@ -256,7 +250,8 @@
             isRunning: false,
             totalEffortTime: 0,
             totalRestTime: 0,
-            targetEffortRestRatio: 1
+            targetEffortRestRatio: 1,
+            currentEffortTime: 0
         };
 
         function startWorkout() {
@@ -265,10 +260,9 @@
             const trainingLoad = parseFloat(document.getElementById('trainingLoad').value);
             const effortIntervalMin = parseInt(document.getElementById('effortIntervalMin').value);
             const effortIntervalMax = parseInt(document.getElementById('effortIntervalMax').value);
-            const restIntervalMin = parseInt(document.getElementById('restIntervalMin').value);
-            const restIntervalMax = parseInt(document.getElementById('restIntervalMax').value);
+            const variation = parseInt(document.getElementById('variation').value);
 
-            if (!totalTime || !trainingLoad || !effortIntervalMin || !effortIntervalMax || !restIntervalMin || !restIntervalMax) {
+            if (!totalTime || !trainingLoad || !effortIntervalMin || !effortIntervalMax || isNaN(variation)) {
                 alert('Veuillez remplir tous les champs !');
                 return;
             }
@@ -283,8 +277,8 @@
                 return;
             }
 
-            if (restIntervalMin > restIntervalMax) {
-                alert('Le temps minimum de repos doit être inférieur ou égal au temps maximum !');
+            if (variation < 0 || variation > 100) {
+                alert('La variation doit être entre 0 et 100% !');
                 return;
             }
 
@@ -294,8 +288,7 @@
                 trainingLoad: trainingLoad,
                 effortIntervalMinMs: effortIntervalMin * 1000,
                 effortIntervalMaxMs: effortIntervalMax * 1000,
-                restIntervalMinMs: restIntervalMin * 1000,
-                restIntervalMaxMs: restIntervalMax * 1000,
+                variation: variation,
                 currentPhase: 'countdown',
                 currentCycle: 1,
                 timeRemaining: totalTime * 60 * 1000,
@@ -305,7 +298,8 @@
                 isRunning: false,
                 totalEffortTime: 0,
                 totalRestTime: 0,
-                targetEffortRestRatio: trainingLoad // Training load is the target ratio of effort to rest
+                targetEffortRestRatio: trainingLoad, // Training load is the target ratio of effort to rest
+                currentEffortTime: 0
             };
 
             // Show timer section and hide config
@@ -325,7 +319,7 @@
                 📊 <strong>Paramètres:</strong> ${Math.round(workoutState.totalTimeMs / 60000)}min total, 
                 Charge: ${workoutState.trainingLoad}, 
                 Effort: ${workoutState.effortIntervalMinMs / 1000}s-${workoutState.effortIntervalMaxMs / 1000}s, 
-                Repos: ${workoutState.restIntervalMinMs / 1000}s-${workoutState.restIntervalMaxMs / 1000}s
+                Variation repos: ${workoutState.variation}%
             `;
         }
 
@@ -362,10 +356,11 @@
             // Determine next phase
             if (workoutState.currentPhase === 'countdown' || workoutState.currentPhase === 'rest') {
                 workoutState.currentPhase = 'effort';
-                workoutState.phaseTimeRemaining = getRandomEffortTime();
+                workoutState.currentEffortTime = getRandomEffortTime();
+                workoutState.phaseTimeRemaining = workoutState.currentEffortTime;
             } else {
                 workoutState.currentPhase = 'rest';
-                workoutState.phaseTimeRemaining = getRandomRestTime();
+                workoutState.phaseTimeRemaining = calculateRestTime(workoutState.currentEffortTime);
                 workoutState.currentCycle++;
             }
 
@@ -410,33 +405,24 @@
             return Math.floor(Math.random() * (max - min + 1000)) + min;
         }
 
-        function getRandomRestTime() {
-            const min = workoutState.restIntervalMinMs;
-            const max = workoutState.restIntervalMaxMs;
-            let baseTime = Math.floor(Math.random() * (max - min + 1000)) + min;
+        function calculateRestTime(effortTimeMs) {
+            // Calculate base rest time using training load ratio
+            // Training load = effort time / rest time, so rest time = effort time / training load
+            const baseRestTime = effortTimeMs / workoutState.trainingLoad;
             
-            // Calculate current effort to rest ratio
-            const currentTotalTime = workoutState.totalEffortTime + workoutState.totalRestTime;
-            if (currentTotalTime > 0) {
-                const currentRatio = workoutState.totalEffortTime / workoutState.totalRestTime;
-                const targetRatio = workoutState.targetEffortRestRatio;
+            // Apply variation if specified
+            if (workoutState.variation > 0) {
+                // Calculate variation range: +/- variation percentage
+                const variationRange = baseRestTime * (workoutState.variation / 100);
+                const minRestTime = baseRestTime - variationRange;
+                const maxRestTime = baseRestTime + variationRange;
                 
-                // If we're behind the target ratio (not enough effort relative to rest), 
-                // reduce rest time to catch up
-                if (currentRatio < targetRatio) {
-                    const adjustmentFactor = Math.max(0.3, targetRatio / (targetRatio + (targetRatio - currentRatio)));
-                    baseTime = Math.floor(baseTime * adjustmentFactor);
-                }
-                // If we're ahead of the target ratio (too much effort relative to rest),
-                // increase rest time to balance
-                else if (currentRatio > targetRatio) {
-                    const adjustmentFactor = Math.min(2.0, 1 + (currentRatio - targetRatio) / targetRatio);
-                    baseTime = Math.floor(baseTime * adjustmentFactor);
-                }
+                // Return random value within variation range
+                return Math.max(1000, Math.floor(Math.random() * (maxRestTime - minRestTime)) + minRestTime);
+            } else {
+                // No variation, return exact calculated time
+                return Math.max(1000, Math.floor(baseRestTime));
             }
-            
-            // Ensure we stay within bounds
-            return Math.max(min, Math.min(max, baseTime));
         }
 
         function updateDisplay() {
@@ -538,8 +524,7 @@
                 trainingLoad: 0,
                 effortIntervalMinMs: 0,
                 effortIntervalMaxMs: 0,
-                restIntervalMinMs: 0,
-                restIntervalMaxMs: 0,
+                variation: 0,
                 currentPhase: 'countdown',
                 currentCycle: 1,
                 timeRemaining: 0,
@@ -549,7 +534,8 @@
                 isRunning: false,
                 totalEffortTime: 0,
                 totalRestTime: 0,
-                targetEffortRestRatio: 1
+                targetEffortRestRatio: 1,
+                currentEffortTime: 0
             };
         }
 
